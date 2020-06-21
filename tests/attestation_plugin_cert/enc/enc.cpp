@@ -7,12 +7,12 @@
 #include <mbedtls/rsa.h>
 #include <openenclave/attestation/attester.h>
 #include <openenclave/attestation/verifier.h>
+#include <openenclave/bits/evidence.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
-#include <openenclave/bits/evidence.h>
-#include <openenclave/internal/sgx/plugin.h>
 #include <openenclave/internal/raise.h>
 #include <openenclave/internal/report.h>
+#include <openenclave/internal/sgx/plugin.h>
 #include <openenclave/internal/tests.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +22,10 @@
 // This is the claims validation callback. A TLS connecting party (client or
 // server) can verify the passed in claims to decide whether to
 // accept a connection request
-oe_result_t enclave_claims_verifier(oe_claim_t* claims, size_t claims_length, void* arg)
+oe_result_t enclave_claims_verifier(
+    oe_claim_t* claims,
+    size_t claims_length,
+    void* arg)
 {
     oe_result_t result = OE_VERIFY_FAILED;
 
@@ -38,18 +41,19 @@ oe_result_t enclave_claims_verifier(oe_claim_t* claims, size_t claims_length, vo
             // Check the enclave's security version
             if (security_version < 1)
             {
-              OE_TRACE_ERROR(
-                  "identity->security_version checking failed (%d)\n",
-                  security_version);
-              goto done;
+                OE_TRACE_ERROR(
+                    "identity->security_version checking failed (%d)\n",
+                    security_version);
+                goto done;
             }
         }
         // Dump an enclave's unique ID, signer ID and Product ID. They are
-        // MRENCLAVE, MRSIGNER and ISVPRODID for SGX enclaves. In a real scenario,
-        // custom id checking should be done here
-        else if (strcmp(claim->name, OE_CLAIM_SIGNER_ID) == 0 ||
-                 strcmp(claim->name, OE_CLAIM_UNIQUE_ID) == 0 ||
-                 strcmp(claim->name, OE_CLAIM_PRODUCT_ID) == 0)
+        // MRENCLAVE, MRSIGNER and ISVPRODID for SGX enclaves. In a real
+        // scenario, custom id checking should be done here
+        else if (
+            strcmp(claim->name, OE_CLAIM_SIGNER_ID) == 0 ||
+            strcmp(claim->name, OE_CLAIM_UNIQUE_ID) == 0 ||
+            strcmp(claim->name, OE_CLAIM_PRODUCT_ID) == 0)
         {
             OE_TRACE_INFO("Enclave %s:\n", claim->name);
             for (size_t j = 0; j < claim->value_size; j++)

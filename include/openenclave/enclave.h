@@ -717,9 +717,10 @@ oe_result_t oe_verify_attestation_certificate(
  * @param[in] claims_length length of the claims array
  * @param[in] arg caller defined context
  */
-typedef oe_result_t (
-    *oe_claim_verify_callback_t)(oe_claim_t* claims, size_t claims_length,
-        void* arg);
+typedef oe_result_t (*oe_claim_verify_callback_t)(
+    oe_claim_t* claims,
+    size_t claims_length,
+    void* arg);
 
 /**
  * oe_verify_plugin_attestation_certificate

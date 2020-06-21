@@ -1,10 +1,10 @@
 // Copyright (c) Open Enclave SDK contributors.
 // Licensed under the MIT License.
 
+#include <openenclave/attestation/attester.h>
 #include <openenclave/bits/defs.h>
 #include <openenclave/bits/sgx/sgxtypes.h>
 #include <openenclave/enclave.h>
-#include <openenclave/attestation/attester.h>
 #include <openenclave/internal/cert.h>
 #include <openenclave/internal/crypto/sha.h>
 #include <openenclave/internal/print.h>
@@ -207,7 +207,7 @@ oe_result_t oe_generate_plugin_attestation_certificate(
     oe_result_t result = OE_FAILURE;
     uint8_t* evidence_buf = NULL;
     size_t evidence_buf_size = 0;
-    oe_claim_t claims[] = { {"public_key", public_key, public_key_size} };
+    oe_claim_t claims[] = {{"public_key", public_key, public_key_size}};
     size_t claims_size = 1;
 
     OE_TRACE_VERBOSE("Calling oe_generate_plugin_attestation_certificate");

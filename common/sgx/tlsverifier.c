@@ -273,14 +273,7 @@ oe_result_t oe_verify_plugin_attestation_certificate(
         OE_RAISE_MSG(OE_INVALID_PARAMETER, "Invalid report version");
 
     result = oe_verify_evidence(
-          report,
-          report_size,
-          NULL,
-          0,
-          NULL,
-          0,
-          &claims,
-          &claims_length);
+        report, report_size, NULL, 0, NULL, 0, &claims, &claims_length);
     OE_CHECK(result);
     OE_TRACE_VERBOSE("quote validation succeeded");
 
@@ -293,8 +286,8 @@ oe_result_t oe_verify_plugin_attestation_certificate(
     OE_TRACE_VERBOSE(
         "oe_cert_write_public_key_pem pub_key_buf_size=%d", pub_key_buf_size);
 
-    result = verify_public_key_claim(claims, claims_length, pub_key_buf,
-        pub_key_buf_size);
+    result = verify_public_key_claim(
+        claims, claims_length, pub_key_buf, pub_key_buf_size);
     OE_CHECK(result);
     OE_TRACE_VERBOSE("user data: hash(public key) validation passed", NULL);
 
