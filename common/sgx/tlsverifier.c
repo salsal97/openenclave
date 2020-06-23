@@ -67,7 +67,7 @@ static oe_result_t verify_public_key_claim(
     oe_result_t result = OE_FAILURE;
     for (int i = (int)claims_length - 1; i >= 0; i--)
     {
-        if (oe_strcmp(claims[i].name, "public_key") == 0)
+        if (oe_strcmp(claims[i].name, OE_CERTIFICATE_PUBLIC_KEY) == 0)
         {
             if (claims[i].value_size == pub_key_buf_size &&
                 memcmp(claims[i].value, pub_key_buf, pub_key_buf_size) == 0)

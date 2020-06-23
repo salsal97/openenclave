@@ -79,6 +79,11 @@ extern const char* OE_REQUIRED_CLAIMS[OE_REQUIRED_CLAIMS_COUNT];
 extern const char* OE_OPTIONAL_CLAIMS[OE_OPTIONAL_CLAIMS_COUNT];
 
 /**
+ * Additional claims related to TLS certificate
+ */
+#define OE_CERTIFICATE_PUBLIC_KEY "public_key"
+
+/**
  * Supported policies for validation by the verifier attestation plugin.
  * Only time is supported for now.
  */

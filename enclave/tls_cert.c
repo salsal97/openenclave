@@ -207,7 +207,8 @@ oe_result_t oe_generate_plugin_attestation_certificate(
     oe_result_t result = OE_FAILURE;
     uint8_t* evidence_buf = NULL;
     size_t evidence_buf_size = 0;
-    oe_claim_t claims[] = {{"public_key", public_key, public_key_size}};
+    oe_claim_t claims[] = {
+        {OE_CERTIFICATE_PUBLIC_KEY, public_key, public_key_size}};
     size_t claims_size = 1;
 
     OE_TRACE_VERBOSE("Calling oe_generate_plugin_attestation_certificate");
