@@ -130,6 +130,9 @@ int handle_communication_until_done(
 
 waiting_for_connection_request:
 
+# ifdef CLOUD_DEPLOYMENT
+    if (ret != MBEDTLS_ERR_SSL_CONN_EOF)
+#endif
     if (ret != 0)
     {
         mbedtls_strerror(ret, error_buf, MAX_ERROR_BUFF_SIZE);
@@ -139,7 +142,9 @@ waiting_for_connection_request:
     // reset ssl setup and client_fd to prepare for the new TLS connection
     mbedtls_net_free(client_fd);
     mbedtls_ssl_session_reset(ssl);
-
+# ifdef CLOUD_DEPLOYMENT
+    if (ret != MBEDTLS_ERR_SSL_CONN_EOF)
+#endif
     printf(TLS_SERVER "Waiting for a client connection request...\n");
     if ((ret = mbedtls_net_accept(listen_fd, client_fd, NULL, 0, NULL)) != 0)
     {
@@ -151,6 +156,9 @@ waiting_for_connection_request:
             errbuf);
         goto done;
     }
+# ifdef CLOUD_DEPLOYMENT
+    if (ret != MBEDTLS_ERR_SSL_CONN_EOF)
+#endif
     printf(
         TLS_SERVER
         "mbedtls_net_accept returned successfully.(listen_fd = %d) (client_fd "
@@ -161,10 +169,20 @@ waiting_for_connection_request:
     // set up bio callbacks
     mbedtls_ssl_set_bio(
         ssl, client_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
-
+# ifdef CLOUD_DEPLOYMENT
+    if (ret != MBEDTLS_ERR_SSL_CONN_EOF)
+#endif
     printf(TLS_SERVER "Performing the SSL/TLS handshake...\n");
     while ((ret = mbedtls_ssl_handshake(ssl)) != 0)
     {
+# ifdef CLOUD_DEPLOYMENT
+        // Load balancer health-check pings can cause EOF errors
+        // Ignore the error, and wait for client to send request
+        if (ret == MBEDTLS_ERR_SSL_CONN_EOF)
+        {
+            goto waiting_for_connection_request;
+        }
+# endif
         if (ret != MBEDTLS_ERR_SSL_WANT_READ &&
             ret != MBEDTLS_ERR_SSL_WANT_WRITE)
         {
@@ -271,6 +289,9 @@ waiting_for_connection_request:
     ret = 0;
     // comment out the following line if you want the server in a loop
     // goto waiting_for_connection_request;
+# ifdef CLOUD_DEPLOYMENT
+    goto waiting_for_connection_request;
+# endif
 
 done:
     return ret;

@@ -93,3 +93,5 @@ mkdir build && cd build
 cmake ..
 make run
 ```
+### Running attested tls sample on Kubernetes
+Uncomment CLOUD_DEPLOYMENT flag in `common/common.h` and build. This handles load balancer pings and keeping the server alive for more than one session.
