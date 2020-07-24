@@ -8,8 +8,8 @@
 ##
 ##==============================================================================
 
-set(OE_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-set(EDL_DIR ${CMAKE_SOURCE_DIR}/include/openenclave/edl)
+set(OE_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(EDL_DIR ${PROJECT_SOURCE_DIR}/include/openenclave/edl)
 set(EDL_FILE ${EDL_DIR}/syscall.edl)
 if (COMPILE_SYSTEM_EDL)
   add_custom_command(
@@ -46,6 +46,7 @@ list(
   ioctl.c
   fcntl.c
   fdtable.c
+  hostcalls.c
   iov.c
   mount.c
   netdb.c
@@ -56,7 +57,6 @@ list(
   stat.c
   stdio.c
   stdlib.c
-  stub.c
   syscall.c
   unistd.c
   utsname.c)
@@ -65,13 +65,15 @@ add_enclave_library(oesyscall STATIC ${SOURCES})
 
 maybe_build_using_clangw(oesyscall)
 
+enclave_enable_code_coverage(oesyscall)
+
 add_enclave_dependencies(oesyscall syscall_trusted_edl)
 
 enclave_include_directories(
   oesyscall PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
   ${PROJECT_SOURCE_DIR}/include/openenclave/corelibc)
 
-enclave_link_libraries(oesyscall oecore)
+enclave_link_libraries(oesyscall PUBLIC oecore)
 enclave_compile_options(oesyscall PRIVATE -ffunction-sections)
 
 if (COMPILE_SYSTEM_EDL)

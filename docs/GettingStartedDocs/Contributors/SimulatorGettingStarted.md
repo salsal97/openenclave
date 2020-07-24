@@ -11,7 +11,7 @@
 Use the following command to download the source code and set the current directory to it.
 
 ```bash
-git clone https://github.com/openenclave/openenclave.git
+git clone --recursive https://github.com/openenclave/openenclave.git
 cd openenclave
 ```
 
@@ -43,7 +43,7 @@ cd build/
 Then run `cmake` to configure the build and generate the make files and build:
 
 ```bash
-cmake -DHAS_QUOTE_PROVIDER=OFF ..
+cmake ..
 make
 ```
 

@@ -13,7 +13,7 @@ This document is to provide a viable solution to enable Open Enclave SGX DCAP re
 Use the following command to download the source code.
 
 ```bash
-git clone https://github.com/openenclave/openenclave.git
+git clone --recursive https://github.com/openenclave/openenclave.git
 ```
 
 This creates a source tree under the directory called openenclave.
@@ -62,7 +62,7 @@ echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu xenial 
 
 Add the key to the list of trusted keys used by the apt to authenticate packages:
 ```bash
-wget -qO - https://download.01.org/intelsgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
+wget -qO - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | sudo apt-key add -
 ```
 
 Update the apt

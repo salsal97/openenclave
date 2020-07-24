@@ -116,7 +116,9 @@ Please do:
 - **DO** ensure your correct name and email are on each commit.
 - **DO** address PR feedback in an additional commit(s) rather than amending the
   existing commits, and only rebase/squash them when necessary. This makes it
-  easier for reviewers to track changes.
+  easier for reviewers to track changes. After addressing comments, mark as resolved 
+  comments where you did exactly what the reviewer asked, and leave it up to the
+  reviewer to mark anything else as resolved.
 
 Please do not:
 
@@ -189,9 +191,13 @@ After a bors run, there is a known issue where Jenkins builds don't have links
 to the build logs for each pipeline. Please see #2878 for a workaround for
 this issue.
 
+After a successful bors run, the code coverage report is available to developers. See [Code Coverage](../GettingStartedDocs/Contributors/CodeCoverage.md##code-coverage-reports-for-prs) for more details.
+
 Note: If reviewers on a PR make suggestions which you accept using the "Commit
 Suggestion" button on Github, you would need to pull those changes and sign them
-off as required by [DCO](#developer-certificate-of-origin).
+off as required by [DCO](#developer-certificate-of-origin). If instead, you
+would like to sign changes off in the browser, you can use [DCO Github UI]
+(https://github.com/scottrigby/dco-gh-ui), or other similar browser extensions.
 
 Commit Messages
 ---------------

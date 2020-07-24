@@ -2,16 +2,16 @@
 // Licensed under the MIT License.
 
 #include "../calls.h"
-#include <openenclave/bits/eeid.h>
+#include <openenclave/advanced/allocator.h>
+#include <openenclave/attestation/attester.h>
+#include <openenclave/attestation/verifier.h>
 #include <openenclave/bits/sgx/sgxtypes.h>
 #include <openenclave/corelibc/stdlib.h>
 #include <openenclave/corelibc/string.h>
 #include <openenclave/edger8r/enclave.h>
 #include <openenclave/enclave.h>
-#include <openenclave/internal/allocator.h>
 #include <openenclave/internal/atomic.h>
 #include <openenclave/internal/calls.h>
-#include <openenclave/internal/eeid.h>
 #include <openenclave/internal/fault.h>
 #include <openenclave/internal/globals.h>
 #include <openenclave/internal/jump.h>
@@ -28,9 +28,9 @@
 #include <openenclave/internal/utils.h>
 #include "../../../common/sgx/sgxmeasure.h"
 #include "../../sgx/report.h"
-#include "../arena.h"
 #include "../atexit.h"
 #include "../tracee.h"
+#include "arena.h"
 #include "asmdefs.h"
 #include "core_t.h"
 #include "cpuid.h"
@@ -135,38 +135,6 @@ extern bool oe_disable_debug_malloc_check;
 **==============================================================================
 */
 
-#ifdef OE_WITH_EXPERIMENTAL_EEID
-extern volatile const oe_sgx_enclave_properties_t oe_enclave_properties_sgx;
-extern oe_eeid_t* oe_eeid;
-extern size_t oe_eeid_extended_size;
-
-int _is_eeid_base_image(const volatile oe_sgx_enclave_properties_t* properties)
-{
-    return properties->header.size_settings.num_heap_pages == 0 &&
-           properties->header.size_settings.num_stack_pages == 0 &&
-           properties->header.size_settings.num_tcs == 1;
-}
-
-static oe_result_t _eeid_patch_memory_sizes()
-{
-    oe_result_t r = OE_OK;
-
-    if (_is_eeid_base_image(&oe_enclave_properties_sgx))
-    {
-        uint8_t* enclave_base = (uint8_t*)__oe_get_enclave_base();
-        uint8_t* heap_base = (uint8_t*)__oe_get_heap_base();
-        oe_eeid_marker_t* marker = (oe_eeid_marker_t*)heap_base;
-        oe_eeid = (oe_eeid_t*)(enclave_base + marker->offset);
-        oe_eeid_extended_size = marker->size;
-
-        // Wipe the marker page
-        memset(heap_base, 0, OE_PAGE_SIZE);
-    }
-
-    return r;
-}
-#endif
-
 /*
 **==============================================================================
 **
@@ -195,10 +163,6 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
         {
             oe_enclave_t* enclave = (oe_enclave_t*)arg_in;
 
-#ifdef OE_WITH_EXPERIMENTAL_EEID
-            OE_CHECK(_eeid_patch_memory_sizes());
-#endif
-
 #ifdef OE_USE_BUILTIN_EDL
             /* Install the common TEE ECALL function table. */
             OE_CHECK(oe_register_core_ecall_function_table());
@@ -214,10 +178,6 @@ static oe_result_t _handle_init_enclave(uint64_t arg_in)
 
             /* Initialize the CPUID table before calling global constructors. */
             OE_CHECK(oe_initialize_cpuid());
-
-            /* Initialize the allocator */
-            oe_allocator_init(
-                (void*)__oe_get_heap_base(), (void*)__oe_get_heap_end());
 
             /* Call global constructors. Now they can safely use simulated
              * instructions like CPUID. */
@@ -464,6 +424,12 @@ static void _handle_ecall(
 
             /* Call all finalization functions */
             oe_call_fini_functions();
+
+            /* Cleanup attesters */
+            oe_attester_shutdown();
+
+            /* Cleanup verifiers */
+            oe_verifier_shutdown();
 
 #if defined(OE_USE_DEBUG_MALLOC)
 

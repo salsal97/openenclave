@@ -7,18 +7,10 @@
 # https://rix0r.nl/blog/2015/08/13/cmake-guide/
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
-# Utility to ensure specific submodules are present.
-function (check_submodule_not_empty path)
-  file(GLOB submodule_files "${path}/*")
-  list(LENGTH submodule_files number)
-  if (${number} EQUAL 0)
-    message(
-      FATAL_ERROR
-        "Submodule ${path} is empty. You can initialize the submodule now with \
-         'git submodule update --recursive --init',\
-         or during 'git clone' by passing '--recursive'.")
-  endif ()
-endfunction ()
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Include utilities such as `check_submodule_not_empty`.
+include(utilities)
 
 # Read version from "VERSION" file.
 file(STRINGS "VERSION" OE_VERSION_WITH_V)
@@ -43,8 +35,6 @@ endif ()
 # http://cmake.3232098.n2.nabble.com/Prefer-clang-over-gcc-td7597742.html
 set(CMAKE_C_COMPILER_NAMES clang-7 cc)
 set(CMAKE_CXX_COMPILER_NAMES clang++-7 c++)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Will be overwritten during the cmake initialization.
 set(LVI_MITIGATION
@@ -94,12 +84,18 @@ endif ()
 # ignored.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+  set(CMAKE_BUILD_TYPE "Debug")
+endif ()
+
 # Validate CMAKE_BUILD_TYPE
 string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
-list(APPEND uppercase_build_type "" "DEBUG" "RELEASE" "RELWITHDEBINFO")
+list(APPEND uppercase_build_type "DEBUG" "RELEASE" "RELWITHDEBINFO")
 if (NOT uppercase_CMAKE_BUILD_TYPE IN_LIST uppercase_build_type)
   message(FATAL_ERROR "UNKNOWN CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 endif ()
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # Get Jenkins build number
 if (DEFINED ENV{BUILD_NUMBER})
@@ -204,25 +200,25 @@ include(package_settings)
 # See `cmake/add_enclave.cmake` for enclave creation logic
 include(add_enclave)
 
-# User configurable options.
-option(
-  HAS_QUOTE_PROVIDER
-  "Take a build dependency on SGX DCAP, which requires FLC on target device to run."
-  ON)
-
 # TODO: See #756: Fix this because it is incompatible with
 # multi-configuration generators
-if (uppercase_CMAKE_BUILD_TYPE STREQUAL "DEBUG" AND NOT WIN32)
-  # In non-win32 debug build, debug_malloc is on by default
+if (uppercase_CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+  # In debug builds, debug_malloc is on by default
   option(USE_DEBUG_MALLOC
          "Build oeenclave with memory leak detection capability." ON)
-else ()
-  # In win32 or non-debug builds, debug_malloc is off by default
-  option(USE_DEBUG_MALLOC
-         "Build oeenclave with memory leak detection capability." OFF)
 endif ()
 
 option(ADD_WINDOWS_ENCLAVE_TESTS "Build Windows enclave tests" OFF)
+
+# snmalloc uses C++17 `if constexpr` which is available in GCC 7.1 and above.
+# Ubuntu 16.04's GCC is 5.4.0.
+# Versions of clang which we care about support the construct.
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                            VERSION_LESS "7.1")
+  set(COMPILER_SUPPORTS_SNMALLOC off)
+else ()
+  set(COMPILER_SUPPORTS_SNMALLOC on)
+endif ()
 
 # NOTE: Building OpenEnclave using snmalloc for memory allocation is an experimental option.
 # Longer term, there will be a pluggable allocator mechanism to allow users to choose from a
@@ -254,6 +250,80 @@ elseif (WITH_EEID AND OE_TRUSTZONE)
   message(FATAL_ERROR "WITH_EEID is not supported on ARM yet.")
 endif ()
 
+# Option to build and expose the libgcov such that enclave applications can use.
+# Note that this option is only effective when CODE_COVERAGE is not set.
+option(BUILD_LIBGCOV "Build the code coverage library" OFF)
+
+option(CODE_COVERAGE "Enable code coverage testing" OFF)
+if (CODE_COVERAGE)
+  if (WIN32)
+    message(
+      FATAL_ERROR
+        "The CODE_COVERAGE option currently is not supported on Windows.")
+  endif ()
+  if (USE_DEBUG_MALLOC)
+    message(
+      FATAL_ERROR
+        "The CODE_COVERAGE option currently is not supported when the USE_DEBUG_MALLOC option is ON."
+    )
+  endif ()
+  message("-- CODE_COVERAGE set - enable code coverage tests")
+
+  if (CMAKE_C_COMPILER_ID MATCHES GNU)
+    message(FATAL_ERROR "Code coverage is currently only supported by clang.")
+  else ()
+    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 7 OR CMAKE_C_COMPILER_VERSION
+                                                   VERSION_GREATER 7.99)
+      message(
+        WARNING "Code coverage may not work with clang versions other than 7.")
+    endif ()
+  endif ()
+
+  find_program(LCOV "lcov")
+  if (LCOV)
+    message("-- LCOV is found")
+  else ()
+    message(FATAL_ERROR "LCOV is not found.")
+  endif ()
+
+  add_custom_target(
+    code_coverage
+    COMMAND mkdir -p coverage
+    COMMAND lcov -c -i -d ${CMAKE_BINARY_DIR} --gcov-tool
+            ${OE_SCRIPTSDIR}/code-coverage/llvm-gcov -o coverage/base.info
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+  set(FILTERED_LIST
+      "'${PROJECT_SOURCE_DIR}/tests/*'" "'${PROJECT_SOURCE_DIR}/3rdparty/*'"
+      "'${CMAKE_BINARY_DIR}/tests/*'" "'${CMAKE_BINARY_DIR}/3rdparty/*'")
+
+  add_custom_command(
+    TARGET code_coverage
+    COMMAND
+      lcov -d ${CMAKE_BINARY_DIR} --gcov-tool
+      ${OE_SCRIPTSDIR}/code-coverage/llvm-gcov -c -o cov.info --rc
+      lcov_branch_coverage=1
+    COMMAND lcov -a base.info -a cov.info -o cov_total.info --rc
+            lcov_branch_coverage=1
+    COMMAND lcov --remove cov_total.info ${FILTERED_LIST} -o cov_filtered.info
+            --rc lcov_branch_coverage=1
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/coverage)
+
+  add_custom_command(
+    TARGET code_coverage
+    DEPENDS ${CMAKE_BINARY_DIR}/coverage/cov_filtered.info
+    COMMAND
+      ${OE_SCRIPTSDIR}/code-coverage/lcov_cobertura
+      ${CMAKE_BINARY_DIR}/coverage/cov_filtered.info -o
+      ${CMAKE_BINARY_DIR}/coverage/coverage.xml
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
+  add_custom_target(
+    code_coverage_clean
+    COMMAND find ${CMAKE_BINARY_DIR} -type f -name '*.gcda' -delete
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif ()
+
 find_program(VALGRIND "valgrind")
 if (VALGRIND)
   set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --error-exitcode=1")
@@ -275,18 +345,22 @@ add_subdirectory(host)
 # Tests and samples have been ported to manually include system edl files.
 # They can no longer be used when system EDL is builtin.
 if (NOT COMPILE_SYSTEM_EDL)
-  if (BUILD_TESTS)
+  if (BUILD_TESTS AND (NOT COMPONENT MATCHES OEHOSTVERIFY))
     add_subdirectory(tests)
   endif ()
 
-  if (BUILD_ENCLAVES)
+  # Skip samples when enabling the code coverage test.
+  # Otherwise, all the samples need to explicitly link against the libgcov library.
+  if (NOT CODE_COVERAGE)
     add_subdirectory(samples)
   endif ()
 endif ()
 
-add_subdirectory(tools)
+if (NOT COMPONENT MATCHES OEHOSTVERFIY)
+  add_subdirectory(tools)
+endif ()
 
-if (BUILD_ENCLAVES)
+if (BUILD_ENCLAVES AND (NOT COMPONENT MATCHES OEHOSTVERIFY))
   add_subdirectory(enclave)
   add_subdirectory(3rdparty)
   add_subdirectory(libc)
@@ -294,7 +368,7 @@ if (BUILD_ENCLAVES)
   add_subdirectory(syscall)
 endif ()
 
-if (OE_SGX)
+if (OE_SGX AND (NOT COMPONENT MATCHES OEHOSTVERIFY))
   add_subdirectory(debugger)
 endif ()
 

@@ -11,15 +11,22 @@ else ()
   message("ENABLE_FULL_LIBCXX_TESTS not set - building some libcxx tests")
 endif ()
 
+option(ENABLE_FULL_STRESS_TESTS
+       "Build all stress tests and include in test list" OFF)
+if (ENABLE_FULL_STRESS_TESTS)
+  message("ENABLE_FULL_STRESS_TESTS set - building all stress tests")
+else ()
+  message("ENABLE_FULL_STRESS_TESTS not set - building some stress tests")
+endif ()
+
 option(LVI_MITIGATION_SKIP_TESTS "Skip all tests with LVI mitigation" OFF)
 if (LVI_MITIGATION MATCHES ControlFlow AND LVI_MITIGATION_SKIP_TESTS)
   message("LVI_MITIGATION_SKIP_TESTS set - skip all tests with LVI mitigation")
 endif ()
 
+# Define the `OE_SGX` macro used by the oeedger8r on the SGX build.
 if (OE_SGX)
-  set(PLATFORM_EDL_DIR ${PROJECT_SOURCE_DIR}/include/openenclave/edl/sgx)
-elseif (OE_TRUSTZONE)
-  set(PLATFORM_EDL_DIR ${PROJECT_SOURCE_DIR}/include/openenclave/edl/optee)
+  set(DEFINE_OE_SGX "-DOE_SGX")
 endif ()
 
 add_subdirectory(mem)
@@ -41,6 +48,16 @@ if (OE_SGX)
   add_subdirectory(switchless_nestedcalls)
   add_subdirectory(switchless_worksleep)
   add_subdirectory(switchless_one_tcs)
+
+  if (COMPILER_SUPPORTS_SNMALLOC)
+    add_subdirectory(snmalloc)
+  else ()
+    message("The C++ compiler cannot compile snmalloc. Skipping snmalloc test.")
+  endif ()
+
+  if (USE_DEBUG_MALLOC)
+    add_subdirectory(debug_malloc)
+  endif ()
 endif ()
 
 if (UNIX
@@ -54,18 +71,19 @@ if (UNIX
       add_subdirectory(tls_e2e)
     endif ()
 
+    add_subdirectory(abi)
     add_subdirectory(abortStatus)
     add_subdirectory(argv)
     add_subdirectory(atexit)
     add_subdirectory(attestation_cert_apis)
     add_subdirectory(attestation_plugin)
+    add_subdirectory(attestation_plugin_cert)
     add_subdirectory(backtrace)
     if (NOT USE_SNMALLOC)
       add_subdirectory(bigmalloc)
     endif ()
     add_subdirectory(child_thread)
     add_subdirectory(cppException)
-    add_subdirectory(create-rapid)
     add_subdirectory(crypto_crls_cert_chains)
     add_subdirectory(debug-mode)
     add_subdirectory(ecall)
@@ -98,6 +116,15 @@ if (UNIX
     add_subdirectory(thread_local_no_tdata)
     add_subdirectory(VectorException)
     add_subdirectory(stack_smashing_protector)
+    add_subdirectory(stress)
+
+    # The tests in create-rapid fail when enabling code coverage analysis.
+    # The failure happens if the first enclave process terminates, the
+    # host fs that libgcov requires in the subsequent enclave processes
+    # can no longer be used.
+    if (NOT CODE_COVERAGE)
+      add_subdirectory(create-rapid)
+    endif ()
 
     if (WITH_EEID)
       add_subdirectory(eeid_plugin)
@@ -107,6 +134,7 @@ if (UNIX
   add_subdirectory(c99_compliant)
   add_subdirectory(create-errors)
   add_subdirectory(crypto)
+  add_subdirectory(edl_opt_out)
   add_subdirectory(hexdump)
   add_subdirectory(hostcalls)
   add_subdirectory(initializers)
@@ -117,8 +145,14 @@ endif ()
 
 if (UNIX)
   if (OE_SGX)
-    add_subdirectory(child_process)
     add_subdirectory(cmake_name_conflict)
+    # The tests in child_process fail when enabling code coverage analysis.
+    # The failure happens if a child process terminates after the parent
+    # process does. At this point, the host fs that libgcov requires can no
+    # longer be used.
+    if (NOT CODE_COVERAGE)
+      add_subdirectory(child_process)
+    endif ()
   endif ()
   add_subdirectory(libc)
 endif ()
