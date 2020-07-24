@@ -11,7 +11,7 @@
 // handshake with an EOF error. Enabling the flag ignores this error
 // and also squelches logs if this has been
 // 2. Makes the server run in a loop for availability.
-//#define CLOUD_DEPLOYMENT
+#define CLOUD_DEPLOYMENT
 
 #define TLS_CLIENT "TLS client:"
 #define TLS_SERVER "TLS server:"
