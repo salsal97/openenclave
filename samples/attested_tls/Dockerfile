@@ -6,7 +6,7 @@ RUN apt update; apt-get -yqq install git ssh make
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
 ## Install tools required to install openenclave
-RUN apt update; apt -y install wget gnupg python apt-transport-https libssl1.0.0 libssl-dev git
+RUN apt update; apt -y install wget gnupg python apt-transport-https libssl1.0.0 libssl-dev git gdb
 
 ## Adding the Intel and Microsoft repositories to apt
 RUN echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main' | tee /etc/apt/sources.list.d/intel-sgx.list \
@@ -19,7 +19,7 @@ RUN apt update \
     && apt -y install libsgx-enclave-common libsgx-enclave-common-dev libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client open-enclave gcc g++
 
 
-RUN git clone --single-branch --branch vtikoo/attested-tls-k8s https://github.com/salsal97/openenclave.git
+RUN git clone --single-branch --branch sagoel/handle-lb https://github.com/salsal97/openenclave.git
 
 WORKDIR /openenclave/samples/attested_tls
 
