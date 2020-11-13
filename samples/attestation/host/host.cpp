@@ -4,6 +4,7 @@
 #include <openenclave/attestation/sgx/evidence.h>
 #include <openenclave/host.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "attestation_u.h"
 
 // SGX Local Attestation UUID.
@@ -138,6 +139,7 @@ int main(int argc, const char* argv[])
     int ret = 1;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     oe_uuid_t* format_id = nullptr;
+    int count = 0;
 
     /* Check argument count */
     if (argc != 4)
@@ -176,21 +178,38 @@ int main(int argc, const char* argv[])
     }
 
     // attest enclave A to enclave B
+retryA:
     ret = attest_one_enclave_to_the_other(
         format_id, "enclave_a", enclave_a, "enclave_b", enclave_b);
     if (ret)
     {
         printf("Host: attestation failed with %d\n", ret);
-        goto exit;
+        sleep(30);
+        if (count <= 120)
+        {
+            count += 30;
+            goto retryA;
+        }
+        else
+            goto exit;
     }
 
     // attest enclave B to enclave A
+    count = 0;
+retryB:
     ret = attest_one_enclave_to_the_other(
         format_id, "enclave_b", enclave_b, "enclave_a", enclave_a);
     if (ret)
     {
         printf("Host: attestation failed with %d\n", ret);
-        goto exit;
+        sleep(30);
+        if (count <= 120)
+        {
+            count += 30;
+            goto retryA;
+        }
+        else
+            goto exit;
     }
 
     // With successfully attestation on each other, we are ready to exchange
