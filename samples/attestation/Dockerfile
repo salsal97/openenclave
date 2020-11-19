@@ -32,11 +32,22 @@ RUN apt-get update && apt-get install -y \
     libsgx-dcap-ql \
     libsgx-quote-ex \
     az-dcap-client \
-    open-enclave
+    git
 
-# Copy sample code folder into the container
-COPY . attestation/
-WORKDIR /attestation
+# Install openenclave from source
+RUN git clone https://github.com/salsal97/openenclave.git \
+    && cd openenclave \
+    && git fetch && git checkout sagoel_attestation \
+    && git submodule update --recursive --init \
+    && scripts/ansible/install-ansible.sh \
+    && ansible-playbook scripts/ansible/oe-contributors-acc-setup-no-driver.yml \
+    && mkdir build && cd build \
+    && cmake -G "Unix Makefiles" .. \
+    && make \
+    && make install
+
+# # Go to attestation sample
+WORKDIR /openenclave/samples/attestation
 
 ## Source openenclaverc, Set up environment variables
 RUN . /opt/openenclave/share/openenclave/openenclaverc \
@@ -44,9 +55,9 @@ RUN . /opt/openenclave/share/openenclave/openenclaverc \
     && make build
 
 
-## The following sets the flag for out of proc attestation mode. Alternatively you can set this flag on the deployment files
+# ## The following sets the flag for out of proc attestation mode. Alternatively you can set this flag on the deployment files
 ENV SGX_AESM_ADDR=1
 
 
 # ## Set the command to run the getting-report application, to validate that a report can be gotten
-CMD make runsgxremote
+# CMD make runsgxlocal
