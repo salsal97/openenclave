@@ -709,7 +709,7 @@ oe_result_t oe_sgx_qe_get_quote(
         else // ECDSA
         {
             // For EPID, no opt_params is taken.
-            if (opt_params || opt_params_size)
+            if (opt_params_size)
                 OE_RAISE(OE_INVALID_PARAMETER);
         }
 
