@@ -139,6 +139,7 @@ int main(int argc, const char* argv[])
     int ret = 1;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     oe_uuid_t* format_id = nullptr;
+    #define RETRY
 #ifdef RETRY
     int count = 0;
     int POLL = 1;   // 1 second sleep
@@ -189,7 +190,7 @@ retryA:
         format_id, "enclave_a", enclave_a, "enclave_b", enclave_b);
     if (ret)
     {
-        printf("Host: attestation failed with %d\n", ret);
+        printf("Host: attestation failed with HELLO%d\n", ret);
 #ifdef RETRY
         if (sleep(POLL) != 0)
             printf("\n\n\n\nRETRY SLEEP FAILED!\n\n\n\n");
