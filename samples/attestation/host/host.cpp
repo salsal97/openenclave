@@ -139,7 +139,11 @@ int main(int argc, const char* argv[])
     int ret = 1;
     uint32_t flags = OE_ENCLAVE_FLAG_DEBUG;
     oe_uuid_t* format_id = nullptr;
-    // int count = 0;
+#ifdef RETRY
+    int count = 0;
+    int POLL = 1;   // 1 second sleep
+    int LIMIT = 15; // max retries
+#endif
 
     /* Check argument count */
     if (argc != 4)
@@ -178,37 +182,47 @@ int main(int argc, const char* argv[])
     }
 
     // attest enclave A to enclave B
-// retryA:
+#ifdef RETRY
+retryA:
+#endif
     ret = attest_one_enclave_to_the_other(
         format_id, "enclave_a", enclave_a, "enclave_b", enclave_b);
     if (ret)
     {
         printf("Host: attestation failed with %d\n", ret);
-        // sleep(30);
-        // if (count <= 120)
-        // {
-        //     count += 30;
-        //     goto retryA;
-        // }
-        // else
+#ifdef RETRY
+        if (sleep(POLL) != 0)
+            printf("\n\n\n\nRETRY SLEEP FAILED!\n\n\n\n");
+        if (count <= LIMIT)
+        {
+            count += POLL;
+            goto retryA;
+        }
+        else
+#endif
             goto exit;
     }
 
-    // attest enclave B to enclave A
-    // count = 0;
-// retryB:
+// attest enclave B to enclave A
+#ifdef RETRY
+    count = 0;
+retryB:
+#endif
     ret = attest_one_enclave_to_the_other(
         format_id, "enclave_b", enclave_b, "enclave_a", enclave_a);
     if (ret)
     {
         printf("Host: attestation failed with %d\n", ret);
-        // sleep(30);
-        // if (count <= 120)
-        // {
-        //     count += 30;
-        //     goto retryA;
-        // }
-        // else
+#ifdef RETRY
+        if (sleep(POLL) != 0)
+            printf("\n\n\n\nRETRY SLEEP FAILED!\n\n\n\n");
+        if (count <= LIMIT)
+        {
+            count += POLL;
+            goto retryA;
+        }
+        else
+#endif
             goto exit;
     }
 
